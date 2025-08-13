@@ -2,18 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="viewport-fit=cover, user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
-    <title>S49-YLD-HK250801 - Metal Slab Simulation</title>
-    
-    <!-- Web App Meta Tags for Fullscreen Experience -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Metal Slab Sim">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0a0a0a">
-    
-    <!-- Web App Manifest -->
     <link rel="manifest" href="./manifest.json">
+    <title>S49-YLD-HK250801 - Metal Slab Simulation</title>
     
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -23,38 +19,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
-        html, body {
+        body {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            position: fixed;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
             border: none;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            overflow: hidden;
             color: white;
-            /* iOS fullscreen fixes */
-            -webkit-touch-callout: none;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }
-        
-        /* Prevent iOS from styling any elements as buttons */
-        * {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            -webkit-touch-callout: none;
-            -webkit-tap-highlight-color: transparent;
         }
         
         * {
             box-sizing: border-box;
+        }
+        
+        html {
+            margin: 0;
+            padding: 0;
+            border: none;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
         }
         
         :root {
@@ -298,6 +281,14 @@
             border: none;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
+        
+        .parameter-description {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+        
         /* Rolling Panel - identical to control panel */
         .rolling-panel {
             position: fixed;
@@ -322,6 +313,20 @@
         .rolling-panel.expanded {
             transform: translateY(-50%) translateX(0); /* Slide in to visible position */
             box-shadow: -12px 0 48px rgba(0, 0, 0, 0.4); /* Enhanced shadow when expanded */
+        }
+        
+        /* Control Panel Tab */
+        .control-tab {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%) translateY(-60px) translateX(0); /* Position 60px above center */
+            width: 50px;
+            height: 120px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-right: none;
             border-radius: 20px 0 0 20px;
             border-bottom: none; /* Remove bottom border to connect seamlessly */
             display: flex;
@@ -334,6 +339,52 @@
             box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
             margin-left: -1px;
+            /* Prevent iOS from treating as button */
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            touch-action: manipulation !important;
+            outline: none !important;
+        }
+        
+        /* Rolling Panel Tab - exact duplicate of CTRL, positioned horizontally below */
+        .rolling-tab {
+            position: fixed;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%) translateY(60px) translateX(0); /* Position 60px below center */
+            width: 50px;
+            height: 120px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-right: none;
+            border-radius: 20px 0 0 20px;
+            border-top: none; /* Remove top border to connect seamlessly */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.8s ease, opacity 0.3s ease;
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
+            box-sizing: border-box;
+            margin-left: -1px;
+            /* Prevent iOS from treating as button */
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            touch-action: manipulation !important;
+            outline: none !important;
         }
         
         .control-tab:hover {
@@ -374,13 +425,14 @@
             text-transform: uppercase;
         }
         
-        /* Tab Arrow - Aggressive iOS button prevention */
+        /* Tab Arrow */
         .tab-arrow {
             width: 0;
             height: 0;
             border-top: 8px solid transparent;
             border-bottom: 8px solid transparent;
             border-left: 12px solid var(--glass-white);
+            margin-top: 8px;
             transition: all 0.3s ease;
             transform: translateX(0);
             margin-left: 2px;
@@ -401,7 +453,7 @@
             box-shadow: none !important;
         }
         
-        /* Triangle rotation for expanded state */
+        /* Triangle animation for expanded state */
         .control-tab.expanded .tab-arrow,
         .rolling-tab.expanded .tab-arrow {
             transform: translateX(-8px);
