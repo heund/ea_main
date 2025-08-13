@@ -298,14 +298,6 @@
             border: none;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
-        
-        .parameter-description {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
-            margin-top: 4px;
-            line-height: 1.3;
-        }
-        
         /* Rolling Panel - identical to control panel */
         .rolling-panel {
             position: fixed;
@@ -382,7 +374,7 @@
             text-transform: uppercase;
         }
         
-        /* Tab Arrow */
+        /* Tab Arrow - Aggressive iOS button prevention */
         .tab-arrow {
             width: 0;
             height: 0;
@@ -392,6 +384,21 @@
             transition: all 0.3s ease;
             transform: translateX(0);
             margin-left: 2px;
+            /* Prevent iOS from treating as button */
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            pointer-events: none !important;
+            /* Force as pure CSS shape */
+            background: transparent !important;
+            border-style: solid !important;
+            border-radius: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
         
         /* Triangle rotation for expanded state */
