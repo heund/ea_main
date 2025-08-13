@@ -32,12 +32,17 @@
             box-sizing: border-box;
         }
 
-        html, body {
+        html {
+            /* iOS PWA safe area handling - apply to html element */
+            min-height: calc(100% + env(safe-area-inset-top));
+            margin: 0;
+            border: none;
             width: 100%;
-            height: 100%;
-            overflow: hidden;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            background-attachment: fixed;
+            color: white;
+            /* iOS touch and interaction fixes */
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
@@ -46,13 +51,23 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Full-screen iframe container */
+        body {
+            margin: 0;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            border: none;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        /* Full-screen iframe container - adjust for safe areas */
         .app-container {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             z-index: 1;
         }
 

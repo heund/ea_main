@@ -35,8 +35,8 @@
             --glass-darkest: rgba(0, 0, 0, 0.3);
         }
         
-        /* Reset body and html for AR */
-        html, body {
+        /* Reset body and html for AR with iOS safe area handling */
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -47,6 +47,43 @@
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        /* Fix AR.js camera viewport for iOS devices */
+        a-scene {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Fix AR.js video element specifically for iOS safe area */
+        a-scene video,
+        a-scene canvas {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: cover !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
         /* AR Controls */
@@ -1699,6 +1736,16 @@
             }
         }
         
+        // Disable device motion/orientation permissions to prevent invasive prompts
+        if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
+            // Override the requestPermission function to prevent automatic requests
+            DeviceMotionEvent.requestPermission = () => Promise.resolve('denied');
+        }
+        if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+            // Override the requestPermission function to prevent automatic requests
+            DeviceOrientationEvent.requestPermission = () => Promise.resolve('denied');
+        }
+
         // Initialize AR system
         let arTrigger;
         window.addEventListener('DOMContentLoaded', () => {
@@ -1738,14 +1785,8 @@
             }
         });
         
-        // Handle camera permissions
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                // Camera access granted - ready for AR
-            })
-            .catch(err => {
-                alert('Camera access required for AR. Please allow camera permissions and refresh.');
-            });
+        // Remove automatic camera permission request - let AR.js handle it when needed
+        // This prevents the invasive permission prompt on page load
     </script>
 </body>
 </html>
