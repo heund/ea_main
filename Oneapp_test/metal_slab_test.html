@@ -1349,21 +1349,22 @@
             }, 20000); // Morph every 20 seconds for slow, organic evolution
         }
         
-        // Update overall Tone.js volume based on RF parameter
+        // Update base note amplitude based on RF parameter - DEBUG VERSION: Controls overall pad volume
         function updateBaseNoteAmplitude(rfValue) {
             currentRF = rfValue;
             
             if (padVolume && padPlaying) {
                 try {
-                    // Map RF to overall Tone.js pad volume: 0.0 = -30dB, 1.0 = +5dB
-                    const minVolume = -30;
-                    const maxVolume = 5;
+                    // DEBUG: Map RF directly to overall pad volume for clear testing
+                    // 0.0 = -30dB (very quiet), 0.5 = -10dB (moderate), 1.0 = +5dB (loud)
+                    const minVolume = -30; // Very quiet but clearly audible
+                    const maxVolume = 5;   // Loud and clear
                     const targetVolume = minVolume + (rfValue * (maxVolume - minVolume));
                     
-                    // Instant volume response
+                    // Instant volume response - no delay at all
                     padVolume.volume.value = targetVolume;
                     
-                    console.log(`RF: Overall Tone.js volume set to ${targetVolume.toFixed(1)}dB (RF: ${rfValue.toFixed(2)})`);
+                    console.log(`RF DEBUG: Overall pad volume set to ${targetVolume.toFixed(1)}dB (RF: ${rfValue.toFixed(2)})`);
                     
                 } catch (error) {
                     console.log('RF amplitude update error:', error);
@@ -1371,11 +1372,26 @@
             }
         }
         
-        // Gap parameter - DISABLED per user request
+        // Update middle note amplitude based on Gap parameter (간격)
         function updateMiddleNoteAmplitude(gapValue) {
             currentGap = gapValue;
-            console.log(`Gap parameter: ${gapValue.toFixed(2)} (disabled per user request)`);
-            // Gap parameter left blank as requested
+            
+            if (dVolume && padPlaying) {
+                try {
+                    // Map Gap value to volume range: 0.0 = -45dB, 0.5 = -15dB, 1.0 = 0dB
+                    const minVolume = -45; // Very quiet but audible
+                    const maxVolume = 0;   // Full volume
+                    const targetVolume = minVolume + (gapValue * (maxVolume - minVolume));
+                    
+                    // Instant volume response - no delay at all
+                    dVolume.volume.value = targetVolume;
+                    
+                    console.log(`Gap: Middle note amplitude set to ${targetVolume.toFixed(1)}dB (Gap: ${gapValue.toFixed(2)})`);
+                    
+                } catch (error) {
+                    console.log('Gap amplitude update error:', error);
+                }
+            }
         }
         
         // Update waveform blend based on FRA parameter (sine to sawtooth)
@@ -1387,15 +1403,15 @@
                     // FRA controls blend between sine (smooth) and sawtooth (aggressive)
                     // 0.0 = pure sine (smooth), 1.0 = much more sawtooth (aggressive)
                     
-                    // SUPER AGGRESSIVE sawtooth for debugging - should be VERY obvious
-                    const sawLevel = fraValue; // Direct mapping: 0.0 = silent, 1.0 = LOUD
+                    // Calculate sawtooth level - much more dramatic for testing
+                    const sawLevel = fraValue; // Direct mapping: 0.0 = silent, 1.0 = full volume
                     
-                    // Map to EXTREME dB range: 0.0 = -60dB (silent), 1.0 = +10dB (VERY LOUD)
+                    // Map to dB range: 0.0 = -60dB (silent), 1.0 = -5dB (loud and clear)
                     const minSawVolume = -60; // Silent
-                    const maxSawVolume = 10;  // VERY LOUD - should be impossible to miss
+                    const maxSawVolume = -5;  // Loud and clearly audible
                     const sawVolumeDb = minSawVolume + (sawLevel * (maxSawVolume - minSawVolume));
                     
-                    // Apply EXTREME sawtooth volume for debugging
+                    // Apply dramatic sawtooth volume for clear testing
                     bbSawVolume.volume.value = sawVolumeDb;
                     dSawVolume.volume.value = sawVolumeDb;
                     fSawVolume.volume.value = sawVolumeDb;
