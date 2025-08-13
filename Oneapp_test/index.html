@@ -33,8 +33,9 @@
         }
 
         html {
-            /* iOS PWA safe area handling - apply to html element */
+            /* iOS PWA safe area handling - apply to html element - EXACT COPY from metal_slab_test.html */
             min-height: calc(100% + env(safe-area-inset-top));
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             margin: 0;
             border: none;
             width: 100%;
@@ -53,12 +54,11 @@
 
         body {
             margin: 0;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            padding: 0;
             border: none;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            box-sizing: border-box;
         }
 
         /* Full-screen iframe container - adjust for safe areas */
