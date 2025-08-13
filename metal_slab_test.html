@@ -1095,6 +1095,16 @@
         // Initialize Tone.js pad with Bb major chord and reverb
         function initializeTonePad() {
             try {
+                // iOS PWA audio context fix - ensure proper initialization
+                if (Tone.context.state !== 'running') {
+                    console.log('Tone.js context not running, attempting to start...');
+                    Tone.start().then(() => {
+                        console.log('Tone.js context started successfully');
+                    }).catch(error => {
+                        console.log('Tone.js context start failed:', error);
+                    });
+                }
+                
                 // Create reverb effect with more reverb
                 padReverb = new Tone.Reverb({
                     decay: 15,
@@ -1135,6 +1145,58 @@
                 console.log('Tone.js pad system initialized');
             } catch (error) {
                 console.log('Tone.js initialization error:', error);
+            }
+        }
+        
+        // Start the Tone.js pad when CONT or ROLLING panel is expanded
+        function startTonePad() {
+            if (padPlaying || !bbSynth || !dSynth || !fSynth) {
+                return; // Already playing or synths not ready
+            }
+            
+            try {
+                // Enhanced iOS PWA audio context handling
+                if (Tone.context.state !== 'running') {
+                    console.log('Starting Tone.js context for iOS PWA...');
+                    Tone.start().then(() => {
+                        console.log('Tone.js context started, triggering pad...');
+                        triggerPadNotes();
+                    }).catch(error => {
+                        console.log('Tone.js context start failed:', error);
+                        // Try alternative approach for iOS PWA
+                        setTimeout(() => {
+                            if (Tone.context.state === 'running') {
+                                triggerPadNotes();
+                            }
+                        }, 100);
+                    });
+                } else {
+                    triggerPadNotes();
+                }
+                
+                function triggerPadNotes() {
+                    // Start with initial chord: Bb2, D3, F3
+                    bbSynth.triggerAttack(`${currentChord.bb.note}${currentChord.bb.octave}`);
+                    dSynth.triggerAttack(`${currentChord.d.note}${currentChord.d.octave}`);
+                    fSynth.triggerAttack(`${currentChord.f.note}${currentChord.f.octave}`);
+                    
+                    // Initialize process parameters to their default 0.5 values immediately
+                    setTimeout(() => {
+                        updateBaseNoteAmplitude(0.5);   // Initialize RF control
+                        updateMiddleNoteAmplitude(0.5); // Initialize Gap control  
+                        updateOverallAmplitude(0.5);    // Initialize FRA control
+                    }, 100); // Small delay to ensure audio context is ready
+                    
+                    padPlaying = true;
+                    
+                    // Start slow evolution of individual notes
+                    startPadEvolution();
+                    
+                    console.log('Bb major pad started with iOS PWA compatibility');
+                }
+                
+            } catch (error) {
+                console.log('Pad start error:', error);
             }
         }
         
@@ -1322,9 +1384,12 @@
         function startBackgroundMusic() {
             if (backgroundMusic) {
                 try {
-                    backgroundMusic.play().catch(e => {
-                        // Handle autoplay restrictions - will try again on first user interaction
-                        console.log('Background music autoplay prevented, will start on user interaction:', e);
+                    backgroundMusic.play().then(() => {
+                        console.log('Background music started');
+                        musicStarted = true;
+                    }).catch(error => {
+                        console.log('Background music autoplay blocked:', error);
+                        // Will be started on first user interaction
                     });
                 } catch (error) {
                     console.log('Background music error:', error);
@@ -1332,8 +1397,91 @@
             }
         }
         
+        // Setup app visibility handling for iOS PWA audio management
+        function setupAppVisibilityHandling() {
+            // Handle page visibility changes (app backgrounding/minimizing)
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    // App is being backgrounded/minimized
+                    console.log('App backgrounded - pausing audio');
+                    appIsVisible = false;
+                    
+                    // Pause background music
+                    if (backgroundMusic && !backgroundMusic.paused) {
+                        backgroundMusic.pause();
+                        audioWasPausedByVisibility = true;
+                    }
+                    
+                    // Suspend Tone.js context to save battery and stop audio
+                    if (Tone.context.state === 'running') {
+                        Tone.context.suspend().then(() => {
+                            console.log('Tone.js context suspended');
+                        }).catch(error => {
+                            console.log('Tone.js suspend error:', error);
+                        });
+                    }
+                } else {
+                    // App is being foregrounded/restored
+                    console.log('App foregrounded - resuming audio');
+                    appIsVisible = true;
+                    
+                    // Resume background music if it was paused by visibility change
+                    if (backgroundMusic && audioWasPausedByVisibility) {
+                        backgroundMusic.play().catch(error => {
+                            console.log('Background music resume error:', error);
+                        });
+                        audioWasPausedByVisibility = false;
+                    }
+                    
+                    // Resume Tone.js context
+                    if (Tone.context.state === 'suspended') {
+                        Tone.context.resume().then(() => {
+                            console.log('Tone.js context resumed');
+                        }).catch(error => {
+                            console.log('Tone.js resume error:', error);
+                        });
+                    }
+                }
+            });
+            
+            // Additional iOS PWA specific events
+            window.addEventListener('pagehide', () => {
+                console.log('Page hide - pausing all audio');
+                if (backgroundMusic && !backgroundMusic.paused) {
+                    backgroundMusic.pause();
+                    audioWasPausedByVisibility = true;
+                }
+                if (Tone.context.state === 'running') {
+                    Tone.context.suspend();
+                }
+            });
+            
+            window.addEventListener('pageshow', () => {
+                console.log('Page show - checking audio resume');
+                if (backgroundMusic && audioWasPausedByVisibility) {
+                    setTimeout(() => {
+                        backgroundMusic.play().catch(error => {
+                            console.log('Background music pageshow resume error:', error);
+                        });
+                        audioWasPausedByVisibility = false;
+                    }, 100);
+                }
+                if (Tone.context.state === 'suspended') {
+                    setTimeout(() => {
+                        Tone.context.resume();
+                    }, 100);
+                }
+            });
+            
+            console.log('App visibility handling setup complete');
+        }
+        
         // Try to start background music on first user interaction
         let musicStarted = false;
+        
+        // App visibility state for audio management
+        let appIsVisible = true;
+        let audioWasPausedByVisibility = false;
         function tryStartMusicOnInteraction() {
             if (!musicStarted && backgroundMusic) {
                 startBackgroundMusic();
@@ -2291,7 +2439,7 @@
             
             // Close panel when clicking outside (optional)
             document.addEventListener('click', (e) => {
-                if (isExpanded && 
+                if (currentExpandedPanel === 'cont' && 
                     !controlPanel.contains(e.target) && 
                     !controlTab.contains(e.target)) {
                     togglePanel();
@@ -2402,7 +2550,7 @@
             
             // Close panel when clicking outside (optional)
             document.addEventListener('click', (e) => {
-                if (isExpanded && 
+                if (currentExpandedPanel === 'rolling' && 
                     !rollingPanel.contains(e.target) && 
                     !rollingTab.contains(e.target)) {
                     togglePanel();
@@ -2644,6 +2792,9 @@
             // Initialize audio system
             initializeAudio();
             addClickSounds();
+            
+            // Setup app visibility handling for audio management
+            setupAppVisibilityHandling();
             
             // Try to start background music (may be blocked by autoplay policy)
             setTimeout(() => {
