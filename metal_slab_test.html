@@ -25,18 +25,29 @@
             border: none;
             width: 100%;
             height: 100%;
+            /* Comprehensive iOS viewport fixes */
             min-height: 100vh;
+            min-height: 100dvh; /* Dynamic viewport height for modern browsers */
             min-height: -webkit-fill-available; /* iOS Safari fix */
+            max-height: 100vh;
+            max-height: 100dvh;
+            max-height: -webkit-fill-available;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
             overflow: hidden;
             color: white;
-            /* iOS specific fixes */
+            /* iOS specific positioning fixes */
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
+            /* iOS safe area handling */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            /* iOS touch and interaction fixes */
             -webkit-overflow-scrolling: touch;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -44,6 +55,11 @@
             user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
+            /* Force hardware acceleration */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            /* Prevent iOS zoom on input focus */
+            -webkit-text-size-adjust: 100%;
         }
         
         * {
@@ -68,12 +84,27 @@
             bottom: 0;
             width: 100%;
             height: 100%;
+            /* Comprehensive iOS viewport fixes */
             min-height: 100vh;
+            min-height: 100dvh; /* Dynamic viewport height */
             min-height: -webkit-fill-available; /* iOS Safari fix */
+            max-height: 100vh;
+            max-height: 100dvh;
+            max-height: -webkit-fill-available;
             z-index: 10; /* Ensure canvas stays above data panel during transitions */
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%); /* Ensure dark background */
             transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             overflow: hidden;
+            /* iOS safe area compensation */
+            margin-top: calc(-1 * env(safe-area-inset-top));
+            margin-bottom: calc(-1 * env(safe-area-inset-bottom));
+            margin-left: calc(-1 * env(safe-area-inset-left));
+            margin-right: calc(-1 * env(safe-area-inset-right));
+            /* Force hardware acceleration and proper rendering */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
         
         .canvas-container.shifted {
@@ -1723,13 +1754,84 @@
         }
         
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            // Get the actual viewport dimensions, handling iOS Safari's dynamic viewport
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Update camera
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(width, height);
+            
+            // iOS-specific viewport fixes
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                // Force canvas container to fill the actual viewport
+                const canvasContainer = document.querySelector('.canvas-container');
+                if (canvasContainer) {
+                    canvasContainer.style.height = height + 'px';
+                    canvasContainer.style.width = width + 'px';
+                }
+                
+                // Force body to match viewport
+                document.body.style.height = height + 'px';
+                document.body.style.width = width + 'px';
+                document.documentElement.style.height = height + 'px';
+                document.documentElement.style.width = width + 'px';
+            }
+        }
+        
+        // iOS-specific viewport handler for dynamic viewport changes
+        function handleIOSViewportChange() {
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                // Use visualViewport API if available (modern iOS)
+                if (window.visualViewport) {
+                    const viewport = window.visualViewport;
+                    const height = viewport.height;
+                    const width = viewport.width;
+                    
+                    // Update canvas and containers
+                    const canvasContainer = document.querySelector('.canvas-container');
+                    if (canvasContainer) {
+                        canvasContainer.style.height = height + 'px';
+                        canvasContainer.style.width = width + 'px';
+                    }
+                    
+                    // Update renderer
+                    if (renderer && camera) {
+                        camera.aspect = width / height;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(width, height);
+                    }
+                } else {
+                    // Fallback for older iOS versions
+                    onWindowResize();
+                }
+            }
         }
         
         // Global panel state management
         let currentExpandedPanel = null; // 'cont' or 'rolling' or null
+        let panelTransitionInProgress = false; // Prevent rapid toggling conflicts
+        let dataPanelPreloadTimer = null; // Timer for data panel background preload
+        
+        // Function to ensure data panel background is ready before showing
+        function preloadDataPanelBackground() {
+            const dataPanel = document.getElementById('dataPanel');
+            if (dataPanel) {
+                // Force background rendering by briefly making it visible but transparent
+                dataPanel.style.opacity = '0';
+                dataPanel.style.visibility = 'visible';
+                dataPanel.classList.add('visible');
+                
+                // Use double RAF to ensure background is fully rendered
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        dataPanel.style.opacity = '';
+                        dataPanel.style.visibility = '';
+                    });
+                });
+            }
+        }
         
         // Function to close all panels
         function closeAllPanels(keepDataPanel = false) {
@@ -1786,6 +1888,13 @@
             const canvasContainer = document.querySelector('.canvas-container');
             
             function togglePanel() {
+                // Prevent rapid toggling conflicts
+                if (panelTransitionInProgress) {
+                    console.log('Panel transition in progress, ignoring toggle');
+                    return;
+                }
+                
+                panelTransitionInProgress = true;
                 const dataPanel = document.getElementById('dataPanel');
                 
                 if (currentExpandedPanel === 'cont') {
@@ -1802,7 +1911,10 @@
                     if (dataPanel) {
                         setTimeout(() => {
                             dataPanel.classList.remove('visible');
+                            panelTransitionInProgress = false; // Reset transition flag
                         }, 800); // Match canvas transition duration
+                    } else {
+                        panelTransitionInProgress = false;
                     }
                     
                     currentExpandedPanel = null;
@@ -1812,20 +1924,36 @@
                     const switchingPanels = (currentExpandedPanel === 'rolling');
                     closeAllPanels(switchingPanels);
                     
-                    // Open CONT panel and show data panel - batch DOM updates for perfect synchronization
+                    // Preload data panel background to prevent white flash
+                    if (!switchingPanels) {
+                        preloadDataPanelBackground();
+                    }
+                    
+                    // Open CONT panel with perfect timing synchronization
                     requestAnimationFrame(() => {
-                        controlPanel.classList.add('expanded');
-                        controlTab.classList.add('expanded');
-                        canvasContainer.classList.add('shifted');
-                        // Only add visible class if data panel isn't already visible (prevents flash)
-                        if (dataPanel && !dataPanel.classList.contains('visible')) {
-                            dataPanel.classList.add('visible');
-                        }
-                        // Remove inactive from control tab (now active) and add to rolling tab (now inactive)
-                        controlTab.classList.remove('inactive');
-                        const rollingTab = document.getElementById('rollingTab');
-                        if (rollingTab) rollingTab.classList.add('inactive');
+                        requestAnimationFrame(() => {
+                            // Batch all DOM updates together
+                            controlPanel.classList.add('expanded');
+                            controlTab.classList.add('expanded');
+                            canvasContainer.classList.add('shifted');
+                            
+                            // Ensure data panel is visible with background ready
+                            if (dataPanel && !dataPanel.classList.contains('visible')) {
+                                dataPanel.classList.add('visible');
+                            }
+                            
+                            // Update tab states
+                            controlTab.classList.remove('inactive');
+                            const rollingTab = document.getElementById('rollingTab');
+                            if (rollingTab) rollingTab.classList.add('inactive');
+                            
+                            // Reset transition flag after a short delay to ensure all animations start
+                            setTimeout(() => {
+                                panelTransitionInProgress = false;
+                            }, 100);
+                        });
                     });
+                    
                     currentExpandedPanel = 'cont';
                     
                     // Switch back to default slab animation if coming from rolling mode
@@ -1873,6 +2001,13 @@
             const canvasContainer = document.querySelector('.canvas-container');
             
             function togglePanel() {
+                // Prevent rapid toggling conflicts
+                if (panelTransitionInProgress) {
+                    console.log('Panel transition in progress, ignoring toggle');
+                    return;
+                }
+                
+                panelTransitionInProgress = true;
                 const dataPanel = document.getElementById('dataPanel');
                 
                 if (currentExpandedPanel === 'rolling') {
@@ -1889,7 +2024,10 @@
                     if (dataPanel) {
                         setTimeout(() => {
                             dataPanel.classList.remove('visible');
+                            panelTransitionInProgress = false; // Reset transition flag
                         }, 800); // Match canvas transition duration
+                    } else {
+                        panelTransitionInProgress = false;
                     }
                     
                     currentExpandedPanel = null;
@@ -1899,20 +2037,36 @@
                     const switchingPanels = (currentExpandedPanel === 'cont');
                     closeAllPanels(switchingPanels);
                     
-                    // Open ROLLING panel and show data panel - batch DOM updates for perfect synchronization
+                    // Preload data panel background to prevent white flash
+                    if (!switchingPanels) {
+                        preloadDataPanelBackground();
+                    }
+                    
+                    // Open ROLLING panel with perfect timing synchronization
                     requestAnimationFrame(() => {
-                        rollingPanel.classList.add('expanded');
-                        rollingTab.classList.add('expanded');
-                        canvasContainer.classList.add('shifted');
-                        // Only add visible class if data panel isn't already visible (prevents flash)
-                        if (dataPanel && !dataPanel.classList.contains('visible')) {
-                            dataPanel.classList.add('visible');
-                        }
-                        // Remove inactive from rolling tab (now active) and add to control tab (now inactive)
-                        rollingTab.classList.remove('inactive');
-                        const controlTab = document.getElementById('controlTab');
-                        if (controlTab) controlTab.classList.add('inactive');
+                        requestAnimationFrame(() => {
+                            // Batch all DOM updates together
+                            rollingPanel.classList.add('expanded');
+                            rollingTab.classList.add('expanded');
+                            canvasContainer.classList.add('shifted');
+                            
+                            // Ensure data panel is visible with background ready
+                            if (dataPanel && !dataPanel.classList.contains('visible')) {
+                                dataPanel.classList.add('visible');
+                            }
+                            
+                            // Update tab states
+                            rollingTab.classList.remove('inactive');
+                            const controlTab = document.getElementById('controlTab');
+                            if (controlTab) controlTab.classList.add('inactive');
+                            
+                            // Reset transition flag after a short delay to ensure all animations start
+                            setTimeout(() => {
+                                panelTransitionInProgress = false;
+                            }, 100);
+                        });
                     });
+                    
                     currentExpandedPanel = 'rolling';
                     switchAnimationMode('rolling'); // Switch to rolling animation when ROLLING is expanded
                     console.log('ROLLING panel opened');
@@ -2169,6 +2323,46 @@
                 }, 100);
             }
         });
+
+        // iOS viewport event listeners for comprehensive white bar elimination
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('orientationchange', () => {
+            // Delay to allow iOS to complete orientation change
+            setTimeout(() => {
+                handleIOSViewportChange();
+                onWindowResize();
+            }, 100);
+        });
+
+        // Modern iOS visualViewport API support
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleIOSViewportChange);
+            window.visualViewport.addEventListener('scroll', handleIOSViewportChange);
+        }
+
+        // iOS-specific initialization
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+            // Force initial viewport setup
+            setTimeout(() => {
+                handleIOSViewportChange();
+                onWindowResize();
+            }, 200);
+            
+            // Handle iOS Safari address bar hide/show
+            let ticking = false;
+            function handleIOSScroll() {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        handleIOSViewportChange();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }
+            
+            window.addEventListener('scroll', handleIOSScroll, { passive: true });
+            document.addEventListener('touchmove', handleIOSScroll, { passive: true });
+        }
     </script>
 </body>
 </html>
