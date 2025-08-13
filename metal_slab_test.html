@@ -400,18 +400,31 @@
             outline: none !important;
         }
         
-        .sheet-trigger:hover {
+        .control-tab:hover {
             background: var(--glass-hover);
-            transform: scale(1.05);
         }
         
-        .sheet-trigger:active {
-            transform: scale(0.95);
+        .control-tab.expanded {
+            transform: translateY(-50%) translateY(-60px) translateX(-320px); /* Tab moves left with the panel */
+            background: var(--glass-hover); /* Subtle highlight when expanded */
         }
         
-        .sheet-trigger.active {
+        .rolling-tab:hover {
             background: var(--glass-hover);
-            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .rolling-tab.expanded {
+            transform: translateY(-50%) translateY(60px) translateX(-320px); /* Tab moves left with the panel */
+            background: var(--glass-hover); /* Subtle highlight when expanded */
+        }
+        
+        /* Inactive state - lower opacity when another panel is expanded */
+        .control-tab.inactive {
+            opacity: 0.4;
+        }
+        
+        .rolling-tab.inactive {
+            opacity: 0.4;
         }
         
         /* Tab Icon */
@@ -791,11 +804,11 @@
             display: none; /* Hide descriptions to save space */
         }
         
-        /* Title - Matching CTRL button typography */
+        /* Title - iOS Safe Area Aware Positioning */
         .page-title {
             position: fixed;
-            top: 30px;
-            left: 30px;
+            top: calc(env(safe-area-inset-top) + 30px);
+            left: calc(env(safe-area-inset-left) + 30px);
             font-size: 12px;
             font-weight: 600;
             color: var(--glass-white);
@@ -806,8 +819,8 @@
         
         .page-subtitle {
             position: fixed;
-            top: 50px;
-            left: 30px;
+            top: calc(env(safe-area-inset-top) + 50px);
+            left: calc(env(safe-area-inset-left) + 30px);
             font-size: 12px;
             font-weight: 600;
             color: var(--glass-white);
