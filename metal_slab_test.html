@@ -25,29 +25,18 @@
             border: none;
             width: 100%;
             height: 100%;
-            /* Comprehensive iOS viewport fixes */
             min-height: 100vh;
-            min-height: 100dvh; /* Dynamic viewport height for modern browsers */
             min-height: -webkit-fill-available; /* iOS Safari fix */
-            max-height: 100vh;
-            max-height: 100dvh;
-            max-height: -webkit-fill-available;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
             overflow: hidden;
             color: white;
-            /* iOS specific positioning fixes */
+            /* iOS specific fixes */
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            /* iOS safe area handling */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
-            /* iOS touch and interaction fixes */
             -webkit-overflow-scrolling: touch;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -55,11 +44,6 @@
             user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
-            /* Force hardware acceleration */
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
-            /* Prevent iOS zoom on input focus */
-            -webkit-text-size-adjust: 100%;
         }
         
         * {
@@ -84,27 +68,12 @@
             bottom: 0;
             width: 100%;
             height: 100%;
-            /* Comprehensive iOS viewport fixes */
             min-height: 100vh;
-            min-height: 100dvh; /* Dynamic viewport height */
             min-height: -webkit-fill-available; /* iOS Safari fix */
-            max-height: 100vh;
-            max-height: 100dvh;
-            max-height: -webkit-fill-available;
             z-index: 10; /* Ensure canvas stays above data panel during transitions */
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%); /* Ensure dark background */
             transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             overflow: hidden;
-            /* iOS safe area compensation */
-            margin-top: calc(-1 * env(safe-area-inset-top));
-            margin-bottom: calc(-1 * env(safe-area-inset-bottom));
-            margin-left: calc(-1 * env(safe-area-inset-left));
-            margin-right: calc(-1 * env(safe-area-inset-right));
-            /* Force hardware acceleration and proper rendering */
-            -webkit-transform: translateZ(0);
-            transform: translateZ(0);
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
         }
         
         .canvas-container.shifted {
@@ -1754,59 +1723,9 @@
         }
         
         function onWindowResize() {
-            // Get the actual viewport dimensions, handling iOS Safari's dynamic viewport
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            
-            // Update camera
-            camera.aspect = width / height;
+            camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
-            
-            // iOS-specific viewport fixes
-            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-                // Force canvas container to fill the actual viewport
-                const canvasContainer = document.querySelector('.canvas-container');
-                if (canvasContainer) {
-                    canvasContainer.style.height = height + 'px';
-                    canvasContainer.style.width = width + 'px';
-                }
-                
-                // Force body to match viewport
-                document.body.style.height = height + 'px';
-                document.body.style.width = width + 'px';
-                document.documentElement.style.height = height + 'px';
-                document.documentElement.style.width = width + 'px';
-            }
-        }
-        
-        // iOS-specific viewport handler for dynamic viewport changes
-        function handleIOSViewportChange() {
-            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-                // Use visualViewport API if available (modern iOS)
-                if (window.visualViewport) {
-                    const viewport = window.visualViewport;
-                    const height = viewport.height;
-                    const width = viewport.width;
-                    
-                    // Update canvas and containers
-                    const canvasContainer = document.querySelector('.canvas-container');
-                    if (canvasContainer) {
-                        canvasContainer.style.height = height + 'px';
-                        canvasContainer.style.width = width + 'px';
-                    }
-                    
-                    // Update renderer
-                    if (renderer && camera) {
-                        camera.aspect = width / height;
-                        camera.updateProjectionMatrix();
-                        renderer.setSize(width, height);
-                    }
-                } else {
-                    // Fallback for older iOS versions
-                    onWindowResize();
-                }
-            }
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
         
         // Global panel state management
@@ -2323,46 +2242,6 @@
                 }, 100);
             }
         });
-
-        // iOS viewport event listeners for comprehensive white bar elimination
-        window.addEventListener('resize', onWindowResize);
-        window.addEventListener('orientationchange', () => {
-            // Delay to allow iOS to complete orientation change
-            setTimeout(() => {
-                handleIOSViewportChange();
-                onWindowResize();
-            }, 100);
-        });
-
-        // Modern iOS visualViewport API support
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', handleIOSViewportChange);
-            window.visualViewport.addEventListener('scroll', handleIOSViewportChange);
-        }
-
-        // iOS-specific initialization
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-            // Force initial viewport setup
-            setTimeout(() => {
-                handleIOSViewportChange();
-                onWindowResize();
-            }, 200);
-            
-            // Handle iOS Safari address bar hide/show
-            let ticking = false;
-            function handleIOSScroll() {
-                if (!ticking) {
-                    requestAnimationFrame(() => {
-                        handleIOSViewportChange();
-                        ticking = false;
-                    });
-                    ticking = true;
-                }
-            }
-            
-            window.addEventListener('scroll', handleIOSScroll, { passive: true });
-            document.addEventListener('touchmove', handleIOSScroll, { passive: true });
-        }
     </script>
 </body>
 </html>
