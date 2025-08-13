@@ -19,15 +19,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
-        html, body {
+        html {
+            /* iOS PWA safe area handling - apply to html element */
+            min-height: calc(100% + env(safe-area-inset-top));
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             margin: 0;
-            padding: 0;
             border: none;
             width: 100%;
-            height: 100%;
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
-            overflow: hidden;
+            background-attachment: fixed;
             color: white;
             /* iOS touch and interaction fixes */
             -webkit-user-select: none;
@@ -36,6 +37,15 @@
             user-select: none;
             -webkit-touch-callout: none;
             -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            border: none;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
         
         * {
@@ -390,31 +400,18 @@
             outline: none !important;
         }
         
-        .control-tab:hover {
+        .sheet-trigger:hover {
             background: var(--glass-hover);
+            transform: scale(1.05);
         }
         
-        .control-tab.expanded {
-            transform: translateY(-50%) translateY(-60px) translateX(-320px); /* Tab moves left with the panel */
-            background: var(--glass-hover); /* Subtle highlight when expanded */
+        .sheet-trigger:active {
+            transform: scale(0.95);
         }
         
-        .rolling-tab:hover {
+        .sheet-trigger.active {
             background: var(--glass-hover);
-        }
-        
-        .rolling-tab.expanded {
-            transform: translateY(-50%) translateY(60px) translateX(-320px); /* Tab moves left with the panel */
-            background: var(--glass-hover); /* Subtle highlight when expanded */
-        }
-        
-        /* Inactive state - lower opacity when another panel is expanded */
-        .control-tab.inactive {
-            opacity: 0.4;
-        }
-        
-        .rolling-tab.inactive {
-            opacity: 0.4;
+            border-color: rgba(255, 255, 255, 0.3);
         }
         
         /* Tab Icon */
