@@ -161,7 +161,7 @@
         }
         
         .data-panel .info-title {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--glass-white);
             letter-spacing: 1px;
@@ -176,7 +176,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 6px;
-            font-size: 10px;
+            font-size: 11px;
             line-height: 1.2;
         }
         
@@ -348,7 +348,7 @@
             justify-content: center;
             cursor: pointer;
             z-index: 1001;
-            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.8s ease, opacity 0.3s ease;
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.8s ease, opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
             margin-left: -1px;
@@ -384,7 +384,7 @@
             justify-content: center;
             cursor: pointer;
             z-index: 1001;
-            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.8s ease, opacity 0.3s ease;
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.8s ease, opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             box-shadow: -4px 0 16px rgba(0, 0, 0, 0.2);
             box-sizing: border-box;
             margin-left: -1px;
@@ -418,13 +418,13 @@
             background: var(--glass-hover); /* Subtle highlight when expanded */
         }
         
-        /* Inactive state - lower opacity when another panel is expanded */
+        /* Inactive state - completely hidden when another panel is expanded */
         .control-tab.inactive {
-            opacity: 0.4;
+            opacity: 0;
         }
         
         .rolling-tab.inactive {
-            opacity: 0.4;
+            opacity: 0;
         }
         
         /* Tab Icon */
@@ -598,23 +598,33 @@
         
         /* Reset Button */
         .reset-btn {
-            width: 100%;
-            padding: 12px;
+            width: 40px;
+            height: 40px;
+            padding: 0;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            border-radius: 12px;
+            border-radius: 50%; /* Circular */
             color: var(--glass-white);
-            font-size: 14px;
-            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 15px;
+            margin: 15px auto 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(20px);
         }
         
         .reset-btn:hover {
             background: var(--glass-hover);
-            transform: translateY(-1px);
+            transform: translateY(-1px) rotate(180deg);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .reset-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--glass-white);
+            transition: all 0.3s ease;
         }
         
         /* Reset icon - pure icon, no bounding box */
@@ -896,41 +906,48 @@
         
         <div class="parameter-group">
             <div class="parameter-label">
-                <span>Roll Force (RF)</span>
+                <span>압연력 (RF)</span>
                 <span class="parameter-value" id="rollForceValue">0.5</span>
             </div>
             <input type="range" class="parameter-slider" id="rollForceSlider" 
                    min="0" max="1" step="0.01" value="0.5">
             <div class="parameter-description">
-                Higher force compresses the metal, reducing thickness
+                높은 압력은 금속을 압축하여 두께를 줄입니다
             </div>
         </div>
         
         <div class="parameter-group">
             <div class="parameter-label">
-                <span>Gap</span>
+                <span>간격</span>
                 <span class="parameter-value" id="gapValue">0.5</span>
             </div>
             <input type="range" class="parameter-slider" id="gapSlider" 
                    min="0" max="1" step="0.01" value="0.5">
             <div class="parameter-description">
-                Distance between rollers affects slab width
+                롤러 간 거리가 슬래브 폭에 영향을 줍니다
             </div>
         </div>
         
         <div class="parameter-group">
             <div class="parameter-label">
-                <span>Full Rolling Amount (FRA)</span>
+                <span>전체 압연량 (FRA)</span>
                 <span class="parameter-value" id="fraValue">0.5</span>
             </div>
             <input type="range" class="parameter-slider" id="fraSlider" 
                    min="0" max="1" step="0.01" value="0.5">
             <div class="parameter-description">
-                Cumulative rolling affects final length and elongation
+                누적 압연이 최종 길이와 연신에 영향을 줍니다
             </div>
         </div>
         
-        <button class="reset-btn" id="resetBtn">Reset to Default</button>
+        <button class="reset-btn" id="resetBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                <path d="M3 21v-5h5"/>
+            </svg>
+        </button>
     </div>
     
     <!-- Rolling Panel -->
@@ -939,41 +956,48 @@
         
         <div class="parameter-group">
             <div class="parameter-label">
-                <span>Rolling Speed</span>
+                <span>압연 속도</span>
                 <span class="parameter-value" id="rollingSpeedValue">0.5</span>
             </div>
             <input type="range" class="parameter-slider" id="rollingSpeedSlider" 
                    min="0" max="1" step="0.01" value="0.5">
             <div class="parameter-description">
-                Speed of the rolling process affects grain structure
+                압연 공정 속도가 결정 구조에 영향을 줍니다
             </div>
         </div>
         
         <div class="parameter-group">
             <div class="parameter-label">
-                <span>Temperature</span>
+                <span>온도</span>
                 <span class="parameter-value" id="temperatureValue">0.5</span>
             </div>
             <input type="range" class="parameter-slider" id="temperatureSlider" 
                    min="0" max="1" step="0.01" value="0.5">
             <div class="parameter-description">
-                Rolling temperature affects material properties
+                압연 온도가 재료 특성에 영향을 줍니다
             </div>
         </div>
         
         <div class="parameter-group">
             <div class="parameter-label">
-                <span>Pass Reduction</span>
+                <span>패스 압하율</span>
                 <span class="parameter-value" id="passReductionValue">0.5</span>
             </div>
             <input type="range" class="parameter-slider" id="passReductionSlider" 
                    min="0" max="1" step="0.01" value="0.5">
             <div class="parameter-description">
-                Reduction per pass affects final thickness uniformity
+                패스당 압하율이 최종 두께 균일성에 영향을 줍니다
             </div>
         </div>
         
-        <button class="reset-btn" id="resetRollingBtn">Reset to Default</button>
+        <button class="reset-btn" id="resetRollingBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                <path d="M3 21v-5h5"/>
+            </svg>
+        </button>
     </div>
 
     
