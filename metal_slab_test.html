@@ -14,6 +14,9 @@
     <!-- Three.js for 3D visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
+    <!-- Tone.js for audio synthesis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -1039,6 +1042,359 @@
         let rollingMetal = null;
         let slabGlowLines = []; // Global array for glow lines
         
+        // Audio feedback system
+        let clickSound = null;
+        let backgroundMusic = null;
+        
+        // Tone.js pad system
+        let padSynth = null;
+        let padReverb = null;
+        let padVolume = null;
+        let padPlaying = false;
+        let padEvolutionInterval = null;
+        
+        // Individual note tracking for smooth morphing
+        let currentChord = {
+            bb: { note: 'Bb', octave: 2 },
+            d: { note: 'D', octave: 3 },
+            f: { note: 'F', octave: 3 }
+        };
+        
+        // Individual synths for each note to allow smooth morphing
+        let bbSynth = null;
+        let dSynth = null;
+        let fSynth = null;
+        
+        // Parameter-to-audio mappings
+        let currentRF = 0.5; // Roll Force parameter (0-1) - controls base note amplitude
+        let currentGap = 0.5; // Gap parameter (간격) (0-1) - controls middle note amplitude  
+        let currentFRA = 0.5; // FRA parameter (0-1) - controls overall chord amplitude
+        
+        // Individual volume controls for each note
+        let bbVolume = null; // Base note (Bb) volume control
+        let dVolume = null;  // Middle note (D) volume control  
+        let fVolume = null;  // Top note (F) volume control
+        
+        // Initialize audio system
+        function initializeAudio() {
+            // Initialize click sound
+            clickSound = new Audio('./sounds/click1.wav');
+            clickSound.volume = 0.3; // Set volume to 30% for subtle feedback
+            clickSound.preload = 'auto';
+            
+            // Initialize background music
+            backgroundMusic = new Audio('./sounds/intro_appbg.wav');
+            backgroundMusic.volume = 0.15; // Set volume to 15% for ambient background
+            backgroundMusic.loop = true; // Enable looping
+            backgroundMusic.preload = 'auto';
+            
+            // Initialize Tone.js pad system
+            initializeTonePad();
+        }
+        
+        // Initialize Tone.js pad with Bb major chord and reverb
+        function initializeTonePad() {
+            try {
+                // Create reverb effect with more reverb
+                padReverb = new Tone.Reverb({
+                    decay: 15,
+                    wet: 0.85,
+                    preDelay: 0.15
+                }).toDestination();
+                
+                // Create volume control for fading
+                padVolume = new Tone.Volume(-7).connect(padReverb); // Start at audible level
+                
+                // Create individual volume controls for each note
+                bbVolume = new Tone.Volume(-15).connect(padVolume); // Base note volume
+                dVolume = new Tone.Volume(-15).connect(padVolume);  // Middle note volume  
+                fVolume = new Tone.Volume(-15).connect(padVolume);  // Top note volume
+                
+                // Create individual synths for each note with their own volume controls
+                const synthSettings = {
+                    oscillator: {
+                        type: "sine",
+                        volume: -15
+                    },
+                    envelope: {
+                        attack: 0.8,
+                        decay: 0.5,
+                        sustain: 0.8,
+                        release: 4
+                    },
+                    filter: {
+                        frequency: 800,
+                        rolloff: -24
+                    }
+                };
+                
+                bbSynth = new Tone.Synth(synthSettings).connect(bbVolume);
+                dSynth = new Tone.Synth(synthSettings).connect(dVolume);
+                fSynth = new Tone.Synth(synthSettings).connect(fVolume);
+                
+                console.log('Tone.js pad system initialized');
+            } catch (error) {
+                console.log('Tone.js initialization error:', error);
+            }
+        }
+        
+        // Start the Bb major pad with individual notes
+        function startPad() {
+            if (bbSynth && dSynth && fSynth && !padPlaying) {
+                try {
+                    // Ensure Tone.js audio context is started
+                    if (Tone.context.state !== 'running') {
+                        Tone.start();
+                    }
+                    
+                    // Start with initial chord: Bb2, D3, F3
+                    bbSynth.triggerAttack(`${currentChord.bb.note}${currentChord.bb.octave}`);
+                    dSynth.triggerAttack(`${currentChord.d.note}${currentChord.d.octave}`);
+                    fSynth.triggerAttack(`${currentChord.f.note}${currentChord.f.octave}`);
+                    
+                    padPlaying = true;
+                    
+                    // Fade in the pad volume over 2 seconds
+                    padVolume.volume.rampTo(-7, 2);
+                    
+                    // Start slow evolution of individual notes
+                    startPadEvolution();
+                    
+                    console.log('Bb major pad started with smooth morphing evolution');
+                } catch (error) {
+                    console.log('Pad start error:', error);
+                }
+            }
+        }
+        
+        // Smoothly morph individual notes between octaves
+        function startPadEvolution() {
+            if (padEvolutionInterval) {
+                clearInterval(padEvolutionInterval);
+            }
+            
+            padEvolutionInterval = setInterval(() => {
+                if (bbSynth && dSynth && fSynth && padPlaying) {
+                    try {
+                        // Randomly choose which note to morph (bb, d, or f)
+                        const noteToMorph = ['bb', 'd', 'f'][Math.floor(Math.random() * 3)];
+                        
+                        // Choose a new octave (1-5) different from current
+                        const currentOctave = currentChord[noteToMorph].octave;
+                        const possibleOctaves = [1, 2, 3, 4, 5].filter(oct => oct !== currentOctave);
+                        const newOctave = possibleOctaves[Math.floor(Math.random() * possibleOctaves.length)];
+                        
+                        // Get the synth for this note
+                        let synthToMorph;
+                        if (noteToMorph === 'bb') synthToMorph = bbSynth;
+                        else if (noteToMorph === 'd') synthToMorph = dSynth;
+                        else synthToMorph = fSynth;
+                        
+                        // Create smooth crossfade by using volume ramping
+                        const newNote = `${currentChord[noteToMorph].note}${newOctave}`;
+                        
+                        // Create a temporary volume node for crossfading
+                        const tempVolume = new Tone.Volume(-60).connect(padReverb);
+                        const tempSynth = new Tone.Synth({
+                            oscillator: { type: "sine", volume: -20 },
+                            envelope: { attack: 0.8, decay: 0.5, sustain: 0.8, release: 4 },
+                            filter: { frequency: 800, rolloff: -24 }
+                        }).connect(tempVolume);
+                        
+                        // Start new note quietly
+                        tempSynth.triggerAttack(newNote);
+                        
+                        // Crossfade over 4 seconds
+                        tempVolume.volume.rampTo(-20, 4); // Fade in new note
+                        synthToMorph.volume.rampTo(-60, 4); // Fade out old note
+                        
+                        // After crossfade, replace the old synth
+                        setTimeout(() => {
+                            try {
+                                synthToMorph.triggerRelease();
+                                synthToMorph.dispose();
+                                
+                                // Replace with new synth at correct volume
+                                const newSynth = new Tone.Synth({
+                                    oscillator: { type: "sine", volume: -20 },
+                                    envelope: { attack: 0.8, decay: 0.5, sustain: 0.8, release: 4 },
+                                    filter: { frequency: 800, rolloff: -24 }
+                                }).connect(padVolume);
+                                
+                                newSynth.triggerAttack(newNote);
+                                
+                                // Update synth reference
+                                if (noteToMorph === 'bb') bbSynth = newSynth;
+                                else if (noteToMorph === 'd') dSynth = newSynth;
+                                else fSynth = newSynth;
+                                
+                                // Clean up temp synth
+                                tempSynth.triggerRelease();
+                                tempSynth.dispose();
+                                tempVolume.dispose();
+                                
+                            } catch (cleanupError) {
+                                console.log('Cleanup error:', cleanupError);
+                            }
+                        }, 4500);
+                        
+                        // Update our chord tracking
+                        currentChord[noteToMorph].octave = newOctave;
+                        
+                        console.log(`Morphing ${noteToMorph} from octave ${currentOctave} to ${newOctave}`);
+                        
+                    } catch (error) {
+                        console.log('Pad evolution error:', error);
+                    }
+                }
+            }, 20000); // Morph every 20 seconds for slow, organic evolution
+        }
+        
+        // Update base note amplitude based on RF parameter
+        function updateBaseNoteAmplitude(rfValue) {
+            currentRF = rfValue;
+            
+            if (bbVolume && padPlaying) {
+                try {
+                    // Map RF value to volume range: 0.0 = -45dB, 0.5 = -15dB, 1.0 = 0dB
+                    // Much more dramatic variation for clearly audible changes
+                    const minVolume = -45; // Very quiet but audible
+                    const maxVolume = 0;   // Full volume
+                    const targetVolume = minVolume + (rfValue * (maxVolume - minVolume));
+                    
+                    // Smooth volume transition over 1 second
+                    bbVolume.volume.rampTo(targetVolume, 1);
+                    
+                    console.log(`RF: Base note amplitude set to ${targetVolume.toFixed(1)}dB (RF: ${rfValue.toFixed(2)})`);
+                    
+                } catch (error) {
+                    console.log('RF amplitude update error:', error);
+                }
+            }
+        }
+        
+        // Update middle note amplitude based on Gap parameter (간격)
+        function updateMiddleNoteAmplitude(gapValue) {
+            currentGap = gapValue;
+            
+            if (dVolume && padPlaying) {
+                try {
+                    // Map Gap value to volume range: 0.0 = -45dB, 0.5 = -15dB, 1.0 = 0dB
+                    const minVolume = -45; // Very quiet but audible
+                    const maxVolume = 0;   // Full volume
+                    const targetVolume = minVolume + (gapValue * (maxVolume - minVolume));
+                    
+                    // Smooth volume transition over 1 second
+                    dVolume.volume.rampTo(targetVolume, 1);
+                    
+                    console.log(`Gap: Middle note amplitude set to ${targetVolume.toFixed(1)}dB (Gap: ${gapValue.toFixed(2)})`);
+                    
+                } catch (error) {
+                    console.log('Gap amplitude update error:', error);
+                }
+            }
+        }
+        
+        // Update overall chord amplitude based on FRA parameter
+        function updateOverallAmplitude(fraValue) {
+            currentFRA = fraValue;
+            
+            if (padVolume && padPlaying) {
+                try {
+                    // Map FRA value to overall volume range: 0.0 = -30dB, 0.5 = -10dB, 1.0 = 5dB
+                    // This controls the overall pad level with much more dramatic range
+                    const minVolume = -30; // Much quieter overall
+                    const maxVolume = 5;   // Louder overall for clear presence
+                    const targetVolume = minVolume + (fraValue * (maxVolume - minVolume));
+                    
+                    // Smooth volume transition over 1 second
+                    padVolume.volume.rampTo(targetVolume, 1);
+                    
+                    console.log(`FRA: Overall amplitude set to ${targetVolume.toFixed(1)}dB (FRA: ${fraValue.toFixed(2)})`);
+                    
+                } catch (error) {
+                    console.log('FRA amplitude update error:', error);
+                }
+            }
+        }
+        
+        // Start background music with user interaction handling
+        function startBackgroundMusic() {
+            if (backgroundMusic) {
+                try {
+                    backgroundMusic.play().catch(e => {
+                        // Handle autoplay restrictions - will try again on first user interaction
+                        console.log('Background music autoplay prevented, will start on user interaction:', e);
+                    });
+                } catch (error) {
+                    console.log('Background music error:', error);
+                }
+            }
+        }
+        
+        // Try to start background music on first user interaction
+        let musicStarted = false;
+        function tryStartMusicOnInteraction() {
+            if (!musicStarted && backgroundMusic) {
+                startBackgroundMusic();
+                musicStarted = true;
+            }
+            
+            // Also ensure Tone.js context is started on first interaction
+            if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
+                Tone.start();
+            }
+        }
+        
+        // Play click sound with error handling
+        function playClickSound() {
+            // Try to start background music on first interaction
+            tryStartMusicOnInteraction();
+            
+            if (clickSound) {
+                try {
+                    clickSound.currentTime = 0; // Reset to beginning for rapid clicks
+                    clickSound.play().catch(e => {
+                        // Silently handle audio play errors (common on mobile)
+                        console.log('Audio play prevented:', e);
+                    });
+                } catch (error) {
+                    console.log('Audio error:', error);
+                }
+            }
+        }
+        
+        // Add click sound to all interactive elements
+        function addClickSounds() {
+            // Tab buttons
+            const controlTab = document.getElementById('controlTab');
+            const rollingTab = document.getElementById('rollingTab');
+            
+            // Reset buttons
+            const resetBtn = document.getElementById('resetBtn');
+            const resetRollingBtn = document.getElementById('resetRollingBtn');
+            
+            // Add click sound to tab buttons
+            if (controlTab) {
+                controlTab.addEventListener('click', playClickSound);
+                controlTab.addEventListener('touchstart', playClickSound);
+            }
+            if (rollingTab) {
+                rollingTab.addEventListener('click', playClickSound);
+                rollingTab.addEventListener('touchstart', playClickSound);
+            }
+            
+            // Add click sound to reset buttons
+            if (resetBtn) {
+                resetBtn.addEventListener('click', playClickSound);
+                resetBtn.addEventListener('touchstart', playClickSound);
+            }
+            if (resetRollingBtn) {
+                resetRollingBtn.addEventListener('click', playClickSound);
+                resetRollingBtn.addEventListener('touchstart', playClickSound);
+            }
+        }
+        
         // Helper functions for slider interaction
         function pauseRotationForSlider() {
             isSliderActive = true;
@@ -1571,6 +1927,9 @@
                 document.getElementById('rollForceValue').textContent = parameters.rollForce.toFixed(2);
                 createMetalSlab();
                 pauseRotationForSlider();
+                
+                // Update base note amplitude based on RF parameter
+                updateBaseNoteAmplitude(parameters.rollForce);
             });
             
             // Gap slider
@@ -1579,6 +1938,9 @@
                 document.getElementById('gapValue').textContent = parameters.gap.toFixed(2);
                 createMetalSlab();
                 pauseRotationForSlider();
+                
+                // Update middle note amplitude based on Gap parameter (간격)
+                updateMiddleNoteAmplitude(parameters.gap);
             });
             
             // FRA slider
@@ -1587,6 +1949,9 @@
                 document.getElementById('fraValue').textContent = parameters.fra.toFixed(2);
                 createMetalSlab();
                 pauseRotationForSlider();
+                
+                // Update overall chord amplitude based on FRA parameter
+                updateOverallAmplitude(parameters.fra);
             });
             
             // Reset button
@@ -1605,6 +1970,11 @@
                     document.getElementById('fraValue').textContent = '0.50';
                     
                     createMetalSlab();
+                    
+                    // Reset audio parameters to defaults
+                    updateBaseNoteAmplitude(0.5);   // Reset RF to default base note amplitude
+                    updateMiddleNoteAmplitude(0.5); // Reset Gap to default middle note amplitude
+                    updateOverallAmplitude(0.5);    // Reset FRA to default overall amplitude
                 });
             }
             
@@ -1896,14 +2266,17 @@
                     });
                     
                     currentExpandedPanel = 'cont';
-                    
-                    // Switch back to default slab animation if coming from rolling mode
-                    if (animationMode === 'rolling') {
-                        switchAnimationMode('slab');
-                        console.log('Switched back to default slab animation');
-                    }
-                    
-                    console.log('CONT panel opened');
+                     
+                     // Switch back to default slab animation if coming from rolling mode
+                     if (animationMode === 'rolling') {
+                         switchAnimationMode('slab');
+                         console.log('Switched back to default slab animation');
+                     }
+                     
+                     // Start the Bb major pad when panel is expanded
+                     startPad();
+                     
+                     console.log('CONT panel opened');
                 }
             }
             
@@ -2010,6 +2383,10 @@
                     
                     currentExpandedPanel = 'rolling';
                     switchAnimationMode('rolling'); // Switch to rolling animation when ROLLING is expanded
+                    
+                    // Start the Bb major pad when panel is expanded
+                    startPad();
+                    
                     console.log('ROLLING panel opened');
                 }
             }
@@ -2263,6 +2640,17 @@
                     setupParameterControls();
                 }, 100);
             }
+            
+            // Initialize audio system
+            initializeAudio();
+            addClickSounds();
+            
+            // Try to start background music (may be blocked by autoplay policy)
+            setTimeout(() => {
+                startBackgroundMusic();
+            }, 500); // Small delay to ensure audio context is ready
+            
+            console.log('Audio system initialized');
         });
     </script>
 </body>
